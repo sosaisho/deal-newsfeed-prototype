@@ -5,39 +5,73 @@ const Parser = require("rss-parser");
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server);
-const parser = new Parser();
 
+const io = socketIO(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+  },
+});
+
+const parser = new Parser();
 const PORT = 4000;
 
 let lastGuids = new Set();
+let cachedNews = [];  // Keep recent news items here
 
 async function fetchFeed() {
-  const feed = await parser.parseURL("https://techcrunch.com/feed/");
-  const newItems = feed.items.filter((item) => !lastGuids.has(item.guid));
+  try {
+    console.log("Fetching RSS feed...");
+    const feed = await parser.parseURL("https://techcrunch.com/feed/");
+    const newItems = feed.items.filter((item) => !lastGuids.has(item.guid));
 
-  newItems.forEach((item) => {
-    io.emit("news", {
-      title: item.title,
-      link: item.link,
-      date: item.pubDate,
+    console.log(`Found ${newItems.length} new item(s)`);
+
+    newItems.forEach((item) => {
+      const newsItem = {
+        title: item.title,
+        link: item.link,
+        date: item.pubDate,
+      };
+      io.emit("news", newsItem);
+
+      cachedNews.unshift(newsItem);  // Add new item to the start of cache
+      lastGuids.add(item.guid);
     });
-    lastGuids.add(item.guid);
-  });
 
-  // Clean up old GUIDs to avoid memory leak
-  if (lastGuids.size > 100) {
-    lastGuids = new Set(feed.items.map((item) => item.guid));
+    // Limit cache size to last 50 items
+    if (cachedNews.length > 50) {
+      cachedNews = cachedNews.slice(0, 50);
+    }
+
+    // Clean up GUIDs to prevent memory leaks
+    if (lastGuids.size > 100) {
+      lastGuids = new Set(feed.items.map((item) => item.guid));
+    }
+  } catch (err) {
+    console.error("Error fetching or processing RSS feed:", err);
   }
 }
 
-setInterval(fetchFeed, 10000); // every 10 seconds
+// Fetch initially on startup
+fetchFeed();
 
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+// Poll every 10 seconds
+setInterval(fetchFeed, 10000);
 
 io.on("connection", (socket) => {
   console.log("Client connected");
-  socket.on("disconnect", () => console.log("Client disconnected"));
+
+  // Immediately send cached news to new client
+  cachedNews.forEach((newsItem) => {
+    socket.emit("news", newsItem);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected");
+  });
+});
+
+server.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 });
