@@ -2,7 +2,19 @@
 
 ## Overview
 
-This project simulates a real-time relationship intelligence feed for the private capital ecosystem. It ingests news and updates from multiple RSS sources and categorizes them by event type (e.g., M&A, People Moves, Fundraising). The frontend displays a stream of these updates and allows basic user personalization.
+This prototype demonstrates a real-time news feed system tailored for the private capital ecosystem. It aggregates news and updates from multiple RSS feeds, processes and categorizes the information, and streams it live to a React frontend using WebSockets (Socket.IO).
+
+The goal is to simulate relationship intelligence by:
+
+- **Aggregating diverse data sources:** Pulling in updates from multiple RSS feeds relevant to private equity, deal activity, and advisory news.
+
+- **Real-time streaming:** Using Socket.IO to push updates instantly to connected clients, creating a live feed experience.
+
+- **Categorization:** Classifying news items into event types like Deal Events, Advisor Updates, and Tech News using keyword matching for simple but effective filtering.
+
+- **Personalization:** Allowing users to filter by category and search terms, with preferences saved in `localStorage` for persistence across sessions.
+
+- **Lightweight and extensible:** The backend is stateless and stores data in memory, making it easy to extend with databases, user authentication, or advanced analytics in the future.
 
 ## Features
 
@@ -36,12 +48,9 @@ This project simulates a real-time relationship intelligence feed for the privat
 2. Install dependencies:
 
    ```bash
-   # In the root folder
-   npm install
-
-   # Navigate to the frontend directory
+   npm install    # Install root dependencies
    cd client
-   npm install
+   npm install    # Install frontend dependencies
    ```
 3. Start the backend server:
    
@@ -56,7 +65,7 @@ This project simulates a real-time relationship intelligence feed for the privat
 4.  Start the frontend:
     Start a separate terminal
     ```bash
-    # Navigate to the server directory
+    # Navigate to the client directory
     cd client
     npm run dev
     ```
@@ -73,7 +82,7 @@ This project simulates a real-time relationship intelligence feed for the privat
 
 ## Assumptions & Trade-offs
 
-- No user login — personalization is stored in `localStorage` for simplicity  
+- No user authentication — user preferences are stored locally via localStorage for simplicity
 - RSS feed updates are fetched periodically (e.g., every 5 minutes) rather than in real-time polling  
 - No database — feed items are kept in memory to keep the prototype lightweight  
 - Categorization is basic and keyword-based; more advanced classification could be added later  
@@ -84,8 +93,6 @@ This project simulates a real-time relationship intelligence feed for the privat
 - 🔐 Add user authentication and profile-based personalization for a tailored experience  
 - 🧠 Enhance categorization and event detection with NLP or machine learning models  
 - 🕸 Integrate a graph database (e.g., Neo4j) to support advanced relationship intelligence and network analysis  
-- 📤 Deploy the app on cloud infrastructure such as AWS, Vercel, or Render for scalability and availability  
+- 📤 Deploy the app on cloud infrastructure such as AWS, Vercel, or Render for scalability and availability
+- 🧪 Add unit and integration tests to improve reliability and maintainability
 
-
-
-   
