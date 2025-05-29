@@ -6,9 +6,9 @@ This prototype demonstrates a real-time news feed system tailored for the privat
 
 The goal is to simulate relationship intelligence by:
 
-- **Aggregating diverse data sources:** Pulling in updates from multiple RSS feeds relevant to private equity, deal activity, and advisory news.
+- **Aggregating diverse data sources:** Pulling in updates from multiple RSS feeds covering private equity, deal activity, and advisory news.
 
-- **Real-time streaming:** Using Socket.IO to push updates instantly to connected clients, creating a live feed experience.
+- **Real-time streaming:** Using Socket.IO to instantly push updates to connected clients for a real-time feed experience.
 
 - **Categorization:** Classifying news items into event types like Deal Events, Advisor Updates, and Tech News using keyword matching for simple but effective filtering.
 
@@ -30,12 +30,18 @@ The goal is to simulate relationship intelligence by:
 - **Backend:** Node.js, Express, RSS Parser, Socket.IO  
 - **Other:** localStorage (for preferences), CORS (for local dev)  
 
+## Project Structure
+
+- `/server` — backend Node.js server and RSS polling logic  
+- `/client` — React frontend with real-time feed UI  
+
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js (v18+ recommended)
 - npm
+
 
 ### Running Locally
 1. Clone the repo:
@@ -48,9 +54,12 @@ The goal is to simulate relationship intelligence by:
 2. Install dependencies:
 
    ```bash
-   npm install    # Install root dependencies
+   # From root:
+   npm install          # installs root dependencies (if any)
    cd client
-   npm install    # Install frontend dependencies
+   npm install          # installs frontend dependencies
+   cd ../server
+   npm install          # installs backend dependencies (if applicable)
    ```
 3. Start the backend server:
    
@@ -60,17 +69,15 @@ The goal is to simulate relationship intelligence by:
    node index.js
    ```
 
-   The backend will run on:
-   ➡️ http://localhost:4000
+   The backend will run on http://localhost:4000
 4.  Start the frontend:
-    Start a separate terminal
+    Open a new terminal window or tab
     ```bash
     # Navigate to the client directory
     cd client
     npm run dev
     ```
-    The frontend will run on:
-    ➡️ http://localhost:5173
+    The frontend will run on http://localhost:5173
 
 5. Open http://localhost:5173 in your browser.
 
@@ -80,10 +87,22 @@ The goal is to simulate relationship intelligence by:
 > 
 > To stop either server, press Ctrl + C in the terminal where it's running.
 
+## Contributing / Extending
+
+- To add more RSS feeds, update the `feedUrls` array in `server/index.js`.
+- The categorization logic in `categorizeEvent` can be enhanced for more accuracy.
+- Currently, data is stored in memory only; adding a database would enable persistence.
+
+## Known Limitations
+
+- No user authentication; filters and search terms are stored only in localStorage.
+- RSS polling interval is set to 10 seconds to simulate real-time behavior in demos. For production, this should be increased (e.g., to 3–5 minutes) to reduce load and respect external source limits.
+- Categorization relies on simple keyword matching and might misclassify some news items.
+
 ## Assumptions & Trade-offs
 
 - No user authentication — user preferences are stored locally via localStorage for simplicity
-- RSS feed updates are fetched periodically (e.g., every 5 minutes) rather than in real-time polling  
+- RSS feed updates are fetched every 10 seconds to simulate real-time behavior; a longer interval (e.g., every 5 minutes) would be more appropriate in production. 
 - No database — feed items are kept in memory to keep the prototype lightweight  
 - Categorization is basic and keyword-based; more advanced classification could be added later  
 

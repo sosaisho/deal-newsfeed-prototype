@@ -3,9 +3,11 @@ const http = require("http");
 const socketIO = require("socket.io");
 const Parser = require("rss-parser");
 
+// Setup Express app and HTTP server
 const app = express();
 const server = http.createServer(app);
 
+// Setup Socket.IO server with CORS to allow connection from React dev server
 const io = socketIO(server, {
   cors: {
     origin: "http://localhost:5173",
@@ -16,6 +18,7 @@ const io = socketIO(server, {
 const parser = new Parser();
 const PORT = 4000;
 
+// List of RSS feed URLs to fetch news from
 const feedUrls = [
   "https://www.altassets.net/feed",
   "https://privateequityinfo.com/blog/rss.xml",
@@ -32,9 +35,12 @@ const feedUrls = [
   "https://asimplemodel.com/insights/feed"
 ];
 
+// Keep track of processed item IDs (guid/link/title) to avoid duplicates
 let lastGuids = new Set();
+// Cache recent news items to send to new clients on connect
 let cachedNews = [];
 
+// Fetch and parse one RSS feed URL
 async function fetchFeed(url) {
   try {
     const feed = await parser.parseURL(url);
@@ -45,13 +51,16 @@ async function fetchFeed(url) {
   }
 }
 
+// Fetch all RSS feeds, identify new items, and broadcast them via socket.io
 async function fetchAllFeeds() {
   try {
     console.log("Fetching all RSS feeds...");
 
+    // Fetch feeds concurrently
     const allItemsArrays = await Promise.all(feedUrls.map(fetchFeed));
     const allItems = allItemsArrays.flat();
 
+    // Filter out items already seen
     const newItems = allItems.filter(item => {
       const itemId = item.guid || item.link || item.title;
       return !lastGuids.has(itemId);
@@ -62,6 +71,7 @@ async function fetchAllFeeds() {
     newItems.forEach((item) => {
       const itemId = item.guid || item.link || item.title;
 
+      // Create simplified news item object with needed fields
       const newsItem = {
         guid: itemId,  // store for cleanup
         title: item.title,
@@ -71,8 +81,10 @@ async function fetchAllFeeds() {
         source: getFeedSource(item),
       };
 
+      // Broadcast new news item to all connected clients
       io.emit("news", newsItem);
 
+      // Add to cache and guid set
       cachedNews.unshift(newsItem);
       lastGuids.add(itemId);
     });
@@ -82,10 +94,10 @@ async function fetchAllFeeds() {
       cachedNews = cachedNews.slice(0, 50);
     }
 
-    // Sort cachedNews by date descending (newest first)
+    // Sort cached news by date descending (newest first)
     cachedNews.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // Clean up GUIDs to prevent memory leaks
+    // Clean up GUID set if it grows too large to prevent memory leaks
     if (lastGuids.size > 100) {
       lastGuids = new Set(cachedNews.map(item => item.guid || item.link || item.title));
     }
@@ -94,6 +106,7 @@ async function fetchAllFeeds() {
   }
 }
 
+// Extract hostname domain from item's link for source display
 function getFeedSource(item) {
   try {
     const url = new URL(item.link);
@@ -103,55 +116,42 @@ function getFeedSource(item) {
   }
 }
 
+// Start periodic feed fetching every 10 seconds
 fetchAllFeeds();
 const fetchInterval = setInterval(fetchAllFeeds, 10000);
 
+// Socket.IO connection handling
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
+  // Send cached recent news items to new client on connect
   cachedNews.forEach((newsItem) => {
     socket.emit("news", newsItem);
   });
 
+  // Log client disconnects
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
   });
 });
 
+// Start server listening
 server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  console.log(`Socket.IO server running on port ${PORT}`);
 });
 
-function shutdown() {
-  console.log("Shutting down server...");
-
-  clearInterval(fetchInterval);
-
-  for (const [id, socket] of io.sockets.sockets) {
-    socket.disconnect(true);
-  }
-
-  io.close(() => {
-    console.log("Socket.IO server closed.");
-
-    server.close(() => {
-      console.log("HTTP server closed.");
-      process.exit(0);
-    });
-  });
-}
-
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
-
+// Simple event categorization logic by keywords in title (can be expanded)
 function categorizeEvent(item) {
-  const title = item.title ? item.title.toLowerCase() : "";
-
-  if (title.includes("deal") || title.includes("funding") || title.includes("investment")) {
-    return "Deal Event";
+    const title = (item.title || "").toLowerCase();
+    if (title.includes("tech") || title.includes("ai") || title.includes("software")) {
+      return "Tech News";
+    }
+    if (title.includes("deal") || title.includes("merger") || title.includes("acquisition") || title.includes("investment")) {
+      return "Deal Event";
+    }
+    if (title.includes("advisor") || title.includes("consultant") || title.includes("partner")) {
+      return "Advisor Update";
+    }
+    return "Other";
   }
-  if (title.includes("advisor") || title.includes("joined") || title.includes("partner")) {
-    return "Advisor Update";
-  }
-  return "Tech News";
-}
+  

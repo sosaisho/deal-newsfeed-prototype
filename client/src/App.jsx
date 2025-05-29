@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
+// Initialize socket.io client connecting to backend
 const socket = io("http://localhost:4000");
 
+// Map event types to display icons
 const eventStyles = {
   "Tech News": { icon: "📰" },
   "Deal Event": { icon: "💼" },
@@ -11,26 +13,35 @@ const eventStyles = {
 };
 
 function App() {
+  // Default filter settings (all enabled)
   const defaultFilters = {
     "Tech News": true,
     "Deal Event": true,
     "Advisor Update": true,
   };
 
+  // State to hold news items received from socket
   const [newsItems, setNewsItems] = useState([]);
+
+  // Filters state, initialized from localStorage or defaults
   const [filters, setFilters] = useState(() => {
     const stored = localStorage.getItem("filters");
     return stored ? JSON.parse(stored) : defaultFilters;
   });
+
+  // Search term state, initialized from localStorage or empty string
   const [searchTerm, setSearchTerm] = useState(() => {
     return localStorage.getItem("searchTerm") || "";
   });
 
+  // Effect: subscribe to socket "news" events and update state
   useEffect(() => {
     socket.on("news", (item) => {
       setNewsItems((prev) => {
+        // Add new item to front of list
         const combined = [item, ...prev];
 
+        // Remove duplicates based on link or title
         const seen = new Set();
         const filtered = combined.filter(news => {
           const id = news.link || news.title;
@@ -39,24 +50,29 @@ function App() {
           return true;
         });
 
+        // Sort by date descending (newest first)
         filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        return filtered.slice(0, 100); // keep max 100 items client-side
+        // Keep max 100 items client-side to limit memory usage
+        return filtered.slice(0, 100);
       });
     });
 
+    // Cleanup subscription on component unmount
     return () => socket.off("news");
   }, []);
 
-  // Persist filters and search term
+  // Persist filters to localStorage whenever filters change
   useEffect(() => {
     localStorage.setItem("filters", JSON.stringify(filters));
   }, [filters]);
 
+  // Persist search term to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("searchTerm", searchTerm);
   }, [searchTerm]);
 
+  // Toggle filter state for given event type
   function toggleFilter(type) {
     setFilters((prev) => ({
       ...prev,
@@ -64,6 +80,7 @@ function App() {
     }));
   }
 
+  // Apply filters and search term to news items before rendering
   const filteredItems = newsItems.filter(
     (item) =>
       filters[item.eventType] &&
@@ -90,7 +107,7 @@ function App() {
           gap: 32,
         }}
       >
-        {/* Sidebar */}
+        {/* Sidebar for Filters and Search */}
         <aside
           style={{
             flexBasis: "28%",
@@ -132,7 +149,7 @@ function App() {
             />
           </div>
 
-          {/* Event Filters */}
+          {/* Filters checkboxes */}
           <div>
             <strong style={{ display: "block", marginBottom: 16 }}>Categories</strong>
             {Object.keys(eventStyles)
@@ -160,18 +177,20 @@ function App() {
           </div>
         </aside>
 
-        {/* News Feed */}
+        {/* Main news feed */}
         <main style={{ flexBasis: "72%" }}>
           <h1 style={{ fontSize: "2.5rem", fontWeight: 700, marginBottom: 32 }}>
             Deal Network News
           </h1>
 
+          {/* Show placeholder if no news matches filter */}
           {filteredItems.length === 0 && (
             <p style={{ fontStyle: "italic", color: "#666" }}>
               No news found for your criteria.
             </p>
           )}
 
+          {/* Render filtered news articles */}
           {filteredItems.map((item, idx) => {
             const style = eventStyles[item.eventType] || eventStyles.default;
             return (
